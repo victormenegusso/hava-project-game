@@ -70,10 +70,10 @@ O desenvolvimento será realizado em 6 fases incrementais. Ao final de cada fase
 
 ### Fase 6: Polimento e Fluxo
 **Objetivo:** Menu Inicial e transições.
-- [ ] Criar `src/views/menu_view.py` (Tela de "Press Start").
-- [ ] Conectar Menu -> Jogo -> Game Over -> Menu.
-- [ ] Adicionar sons básicos (pulo, coleta).
-- **Teste:** Jogo completo com ciclo de início, meio e fim.
+- [x] Criar `src/views/menu_view.py` (Tela de "Press Start").
+- [x] Conectar Menu -> Jogo -> Game Over -> Menu.
+- [x] Adicionar sons básicos (pulo, coleta).
+- [x] Teste: Jogo completo com ciclo de início, meio e fim.
 
 ## 3. Próximos Passos Imediatos
 

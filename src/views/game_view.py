@@ -11,6 +11,11 @@ class GameView(arcade.View):
         self.physics_engine = None
         self.camera = None
         self.ui_camera = None
+        
+        # Sounds
+        self.jump_sound = None
+        self.coin_sound = None
+        self.hit_sound = None
 
     def setup(self):
         # Camera setup: Map screen pixels 1:1
@@ -31,6 +36,9 @@ class GameView(arcade.View):
                 "use_spatial_hash": True,
             },
             "Coins": {
+                "use_spatial_hash": True,
+            },
+            "Hazards": {
                 "use_spatial_hash": True,
             },
         }
@@ -70,20 +78,17 @@ class GameView(arcade.View):
              self.physics_engine = arcade.PhysicsEnginePlatformer(
                 self.player, gravity_constant=0.5, walls=arcade.SpriteList()
             )
+            
+        # Load sounds
+        self.jump_sound = arcade.load_sound("assets/sounds/jump.wav")
+        self.coin_sound = arcade.load_sound("assets/sounds/coin.wav")
+        self.hit_sound = arcade.load_sound("assets/sounds/hit.wav")
 
     def on_show_view(self):
         if self.window:
             self.window.background_color = arcade.color.AMAZON
         self.setup()
 
-    def on_draw(self):
-        self.clear()
-        
-        # Draw World
-        self.camera.use()
-        if self.scene:
-            self.scene.draw()
-            
     def on_draw(self):
         self.clear()
         
@@ -134,6 +139,16 @@ class GameView(arcade.View):
             screen_center_y = 0
             
         self.camera.position = (screen_center_x, screen_center_y)
+        
+    def reset_player(self):
+        """Teleport player back to start and reset movement"""
+        self.player.center_x = 100
+        self.player.center_y = 200
+        self.player.change_x = 0
+        self.player.change_y = 0
+        
+        # Play death sound
+        arcade.play_sound(self.hit_sound)
 
     def on_update(self, delta_time):
         if self.physics_engine:
@@ -149,6 +164,16 @@ class GameView(arcade.View):
             for coin in coins_hit:
                 coin.remove_from_sprite_lists()
                 self.score += 1
+                arcade.play_sound(self.coin_sound)
+        
+        # Hazard Collision
+        if self.player and "Hazards" in self.scene:
+            if arcade.check_for_collision_with_list(self.player, self.scene["Hazards"]):
+                self.reset_player()
+                
+        # Check bounds (Falling off map)
+        if self.player.center_y < -100:
+            self.reset_player()
                 
         self.center_camera_to_player()
 
@@ -159,6 +184,7 @@ class GameView(arcade.View):
         if key == arcade.key.UP or key == arcade.key.W or key == arcade.key.SPACE:
              if self.physics_engine.can_jump():
                  self.player.change_y = self.player.jump_speed
+                 arcade.play_sound(self.jump_sound)
         elif key == arcade.key.LEFT or key == arcade.key.A:
             self.player.change_x = -self.player.speed
         elif key == arcade.key.RIGHT or key == arcade.key.D:

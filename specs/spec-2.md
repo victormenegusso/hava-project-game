@@ -52,14 +52,18 @@ hava-project-game/
     1. Redimensionar (Player: 64px, Coin: 32px, Tiles: 128px/tile).
     2. Remover fundo branco (transformar em transparente).
 
-## 4. Estado Atual (Fim da Fase 4)
+### 3.5. Sons (Procedural Audio)
+* **Formato:** `.wav` (PCM 16-bit, 44.1kHz).
+* **Implementação:** Sons gerados via script (`generate_sounds.py`) para evitar dependência de arquivos externos grandes no Git.
+* **Eventos:** Pulo (`jump.wav`), Coleta (`coin.wav`), Dano/Reset (`hit.wav`).
+
+## 4. Estado Atual (Finalizado)
 * [x] Janela e Loop funcionando.
 * [x] Personagem anda e pula com física.
 * [x] Mapa carrega e colide.
 * [x] Câmera segue o personagem corretamente.
 * [x] Moedas são coletáveis e contam pontos.
-* [x] UI de pontos segue a tela.
-
-## 5. Próximos Passos
-* **Fase 5:** Implementar "Hazards" (Espinhos/Buracos) e tela de Game Over.
-* **Fase 6:** Menu Principal e fluxo de jogo completo.
+* [x] Interface (Score/Controles) seguem a tela.
+* [x] Perigos (Espinhos/Buracos) resetam o jogador.
+* [x] Menu Inicial funcional.
+* [x] Efeitos sonoros implementados.
