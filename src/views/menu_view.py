@@ -3,11 +3,17 @@ from src import constants
 from src.views.game_view import GameView
 
 class MenuView(arcade.View):
+    def __init__(self):
+        super().__init__()
+        # Camera setup for fixed UI (defaults to window size and centered)
+        self.camera = arcade.camera.Camera2D()
+
     def on_show_view(self):
         self.window.background_color = arcade.color.DARK_BLUE
 
     def on_draw(self):
         self.clear()
+        self.camera.use()
         
         arcade.draw_text(
             "Aventura em Família",

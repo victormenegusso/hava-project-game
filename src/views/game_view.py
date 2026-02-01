@@ -1,6 +1,8 @@
 import arcade
+import os
 from src import constants
 from src.entities.player import Player
+from src.entities.enemy import Enemy
 
 class GameView(arcade.View):
     def __init__(self):
@@ -12,12 +14,45 @@ class GameView(arcade.View):
         self.camera = None
         self.ui_camera = None
         
+        # Game state
+        self.level_complete = False
+        self.game_complete = False
+        
+        # Level management
+        self.levels = []
+        self.current_level_index = 0
+        self.find_levels()
+        
         # Sounds
         self.jump_sound = None
         self.coin_sound = None
         self.hit_sound = None
 
+    def find_levels(self):
+        """Find all level_*.tmx files in maps/ and sort them numerically"""
+        import os
+        import re
+        
+        map_dir = "maps"
+        if not os.path.exists(map_dir):
+            return
+            
+        files = os.listdir(map_dir)
+        level_files = [f for f in files if f.startswith("level_") and f.endswith(".tmx")]
+        
+        # Sort numerically by Extracting the number: level_1.tmx -> 1
+        def get_level_num(filename):
+            match = re.search(r"level_(\d+)", filename)
+            return int(match.group(1)) if match else 0
+            
+        self.levels = sorted(level_files, key=get_level_num)
+        print(f"Found levels: {self.levels}")
+
     def setup(self):
+        # Reset level state
+        self.level_complete = False
+        self.game_complete = False
+        
         # Camera setup: Map screen pixels 1:1
         rect = arcade.LBWH(0, 0, constants.SCREEN_WIDTH, constants.SCREEN_HEIGHT)
         self.camera = arcade.camera.Camera2D(projection=rect)
@@ -30,7 +65,11 @@ class GameView(arcade.View):
             self.window.background_color = arcade.color.AMAZON
 
         # Tilemap loading
-        map_name = "maps/level_1.tmx"
+        if not self.levels:
+            print("Error: No levels found in maps/ directory.")
+            return
+
+        map_name = os.path.join("maps", self.levels[self.current_level_index])
         layer_options = {
             "Platforms": {
                 "use_spatial_hash": True,
@@ -39,6 +78,13 @@ class GameView(arcade.View):
                 "use_spatial_hash": True,
             },
             "Hazards": {
+                "use_spatial_hash": True,
+            },
+            "enemy": {
+                "use_spatial_hash": True,
+                "custom_class": Enemy,
+            },
+            "goal": {
                 "use_spatial_hash": True,
             },
         }
@@ -70,13 +116,13 @@ class GameView(arcade.View):
         # Physics setup with Platforms layer as walls
         if "Platforms" in self.scene:
             self.physics_engine = arcade.PhysicsEnginePlatformer(
-                self.player, gravity_constant=0.5, walls=self.scene["Platforms"]
+                self.player, gravity_constant=constants.GRAVITY, walls=self.scene["Platforms"]
             )
             print("Physics engine initialized with walls.")
         else:
              print("Warning: Platforms layer missing in map.")
              self.physics_engine = arcade.PhysicsEnginePlatformer(
-                self.player, gravity_constant=0.5, walls=arcade.SpriteList()
+                self.player, gravity_constant=constants.GRAVITY, walls=arcade.SpriteList()
             )
             
         # Load sounds
@@ -121,6 +167,43 @@ class GameView(arcade.View):
             14
         )
         
+        level_name = self.levels[self.current_level_index].replace(".tmx", "").replace("_", " ").title()
+        arcade.draw_text(
+            f"Fase: {level_name}",
+            score_x,
+            score_y - 55, # Below controls
+            arcade.color.WHITE,
+            14
+        )
+        
+        # Draw Congratulations Message
+        if self.level_complete or self.game_complete:
+            msg = constants.MSG_GAME_COMPLETE if self.game_complete else constants.MSG_LEVEL_COMPLETE
+            
+            # Draw semi-transparent background
+            arcade.draw_rect_filled(
+                arcade.XYWH(cam_x + constants.SCREEN_WIDTH / 2, cam_y + constants.SCREEN_HEIGHT / 2, 600, 200),
+                (0, 0, 0, 150)
+            )
+            
+            arcade.draw_text(
+                msg,
+                cam_x + constants.SCREEN_WIDTH / 2,
+                cam_y + constants.SCREEN_HEIGHT / 2 + 20,
+                arcade.color.GOLD,
+                32,
+                anchor_x="center"
+            )
+            
+            arcade.draw_text(
+                "Pressione ENTER para continuar",
+                cam_x + constants.SCREEN_WIDTH / 2,
+                cam_y + constants.SCREEN_HEIGHT / 2 - 40,
+                arcade.color.WHITE,
+                18,
+                anchor_x="center"
+            )
+        
     def center_camera_to_player(self):
         if not self.player:
             return
@@ -151,6 +234,9 @@ class GameView(arcade.View):
         arcade.play_sound(self.hit_sound)
 
     def on_update(self, delta_time):
+        if not self.player or not self.physics_engine:
+            return
+            
         if self.physics_engine:
             self.physics_engine.update()
             
@@ -171,13 +257,54 @@ class GameView(arcade.View):
             if arcade.check_for_collision_with_list(self.player, self.scene["Hazards"]):
                 self.reset_player()
                 
+        # Enemy Collision and AI
+        if self.player and "enemy" in self.scene:
+            # Update Enemy AI
+            for enemy in self.scene["enemy"]:
+                if isinstance(enemy, Enemy):
+                    enemy.follow_player(self.player)
+                    enemy.update()
+
+            enemies_hit = arcade.check_for_collision_with_list(self.player, self.scene["enemy"])
+            for enemy in enemies_hit:
+                # Check if player is falling onto the enemy
+                if self.player.change_y < 0 and self.player.bottom > enemy.center_y:
+                    enemy.remove_from_sprite_lists()
+                    # Bounce player back up
+                    self.player.change_y = constants.PLAYER_JUMP_SPEED / 2
+                    arcade.play_sound(self.jump_sound)
+                else:
+                    self.reset_player()
+                
         # Check bounds (Falling off map)
         if self.player.center_y < -100:
             self.reset_player()
+            
+        # Goal Collision
+        if not (self.level_complete or self.game_complete) and self.player and "goal" in self.scene:
+            if arcade.check_for_collision_with_list(self.player, self.scene["goal"]):
+                if self.current_level_index < len(self.levels) - 1:
+                    self.level_complete = True
+                else:
+                    self.game_complete = True
+                self.player.change_x = 0
+                self.player.change_y = 0
                 
         self.center_camera_to_player()
 
     def on_key_press(self, key, modifiers):
+        if self.level_complete or self.game_complete:
+            if key == arcade.key.ENTER:
+                if self.level_complete:
+                    self.current_level_index += 1
+                    self.level_complete = False
+                    self.setup()
+                elif self.game_complete:
+                    from src.views.menu_view import MenuView
+                    menu_view = MenuView()
+                    self.window.show_view(menu_view)
+                return
+
         if not self.player or not self.physics_engine:
             return
             
