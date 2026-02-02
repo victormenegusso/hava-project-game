@@ -10,3 +10,8 @@ PLAYER_JUMP_SPEED = 12
 # Messages
 MSG_LEVEL_COMPLETE = "Parabéns, você passou!"
 MSG_GAME_COMPLETE = "Parabéns, você zerou!"
+# Boss
+BOSS_SPEED = 3
+BOSS_HEALTH = 3
+BOSS_KNOCKBACK_X = 15
+BOSS_KNOCKBACK_Y = 10

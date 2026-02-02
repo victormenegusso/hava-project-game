@@ -3,6 +3,7 @@ import os
 from src import constants
 from src.entities.player import Player
 from src.entities.enemy import Enemy
+from src.entities.boss import Boss
 
 class GameView(arcade.View):
     def __init__(self):
@@ -83,6 +84,10 @@ class GameView(arcade.View):
             "enemy": {
                 "use_spatial_hash": True,
                 "custom_class": Enemy,
+            },
+            "boss": {
+                "use_spatial_hash": True,
+                "custom_class": Boss,
             },
             "goal": {
                 "use_spatial_hash": True,
@@ -234,6 +239,10 @@ class GameView(arcade.View):
         arcade.play_sound(self.hit_sound)
 
     def on_update(self, delta_time):
+        # Freeze game if level or game is complete
+        if self.level_complete or self.game_complete:
+            return
+
         if not self.player or not self.physics_engine:
             return
             
@@ -262,8 +271,8 @@ class GameView(arcade.View):
             # Update Enemy AI
             for enemy in self.scene["enemy"]:
                 if isinstance(enemy, Enemy):
-                    enemy.follow_player(self.player)
-                    enemy.update()
+                    enemy.update_ia(self.player, self.scene["Platforms"], self.scene["Hazards"])
+                    enemy.center_x += enemy.change_x
 
             enemies_hit = arcade.check_for_collision_with_list(self.player, self.scene["enemy"])
             for enemy in enemies_hit:
@@ -276,19 +285,58 @@ class GameView(arcade.View):
                 else:
                     self.reset_player()
                 
+        # Boss Collision and AI
+        if self.player and "boss" in self.scene:
+            # Update Boss AI
+            for boss in self.scene["boss"]:
+                if isinstance(boss, Boss):
+                    boss.update_ia(self.player, self.scene["Platforms"], self.scene["Hazards"])
+                    boss.center_x += boss.change_x
+
+            bosses_hit = arcade.check_for_collision_with_list(self.player, self.scene["boss"])
+            for boss in bosses_hit:
+                if self.player.change_y < 0 and self.player.bottom > boss.center_y:
+                    # Hit the boss
+                    if isinstance(boss, Boss):
+                        boss.health -= 1
+                        print(f"Boss hit! HP: {boss.health}")
+                        
+                        # Knockback player
+                        if self.player.center_x < boss.center_x:
+                            self.player.change_x = -constants.BOSS_KNOCKBACK_X
+                        else:
+                            self.player.change_x = constants.BOSS_KNOCKBACK_X
+                        
+                        self.player.change_y = constants.BOSS_KNOCKBACK_Y
+                        arcade.play_sound(self.jump_sound)
+
+                        if boss.health <= 0:
+                            boss.remove_from_sprite_lists()
+                            print("Boss defeated!")
+                else:
+                    self.reset_player()
+
         # Check bounds (Falling off map)
         if self.player.center_y < -100:
             self.reset_player()
             
-        # Goal Collision
-        if not (self.level_complete or self.game_complete) and self.player and "goal" in self.scene:
-            if arcade.check_for_collision_with_list(self.player, self.scene["goal"]):
-                if self.current_level_index < len(self.levels) - 1:
-                    self.level_complete = True
-                else:
-                    self.game_complete = True
-                self.player.change_x = 0
-                self.player.change_y = 0
+        # Goal Visibility and Collision
+        if self.player and "goal" in self.scene:
+            has_boss = "boss" in self.scene and len(self.scene["boss"]) > 0
+            
+            # Update goal visibility
+            for goal_sprite in self.scene["goal"]:
+                goal_sprite.visible = not has_boss
+
+            # Only check collision if no bosses remain
+            if not has_boss and not (self.level_complete or self.game_complete):
+                if arcade.check_for_collision_with_list(self.player, self.scene["goal"]):
+                    if self.current_level_index < len(self.levels) - 1:
+                        self.level_complete = True
+                    else:
+                        self.game_complete = True
+                    self.player.change_x = 0
+                    self.player.change_y = 0
                 
         self.center_camera_to_player()
 
