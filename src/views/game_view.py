@@ -18,6 +18,7 @@ class GameView(arcade.View):
         # Game state
         self.level_complete = False
         self.game_complete = False
+        self.score = 0
         
         # Level management
         self.levels = []
@@ -115,7 +116,8 @@ class GameView(arcade.View):
         self.scene.add_sprite("Player", self.player)
         print(f"Player added at {self.player.position}")
         
-        # Score setup
+        # Reset score for new level if needed, but here we keep it cumulative probably?
+        # The original code had self.score = 0 in setup, which means it reset every level.
         self.score = 0
         
         # Physics setup with Platforms layer as walls
@@ -248,6 +250,9 @@ class GameView(arcade.View):
             
         if self.physics_engine:
             self.physics_engine.update()
+            
+        # Update animations
+        self.scene.update_animation(delta_time)
             
         # Debug print every 60 frames approx
         if int(1/delta_time) % 60 == 0: 

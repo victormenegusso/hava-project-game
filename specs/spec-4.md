@@ -13,6 +13,14 @@ Esta é a especificação definitiva do projeto, consolidando todas as funcional
 * **Mecânica de Ataque:** Elimina inimigos e causa dano ao Boss pulando sobre eles (colisão vertical negativa).
 * **Reset:** Retorna ao início da fase se tocar em espinhos, cair no buraco ou ser atingido lateralmente por inimigos.
 
+#### 2.1.1 Sistema de Animação
+* **Inversão:** O personagem inverte horizontalmente (espelhamento) automaticamente com base na direção do movimento (`change_x`).
+* **Estados de Animação:**
+    * `Idle`: Personagem parado.
+    * `Walking`: Ciclo de 4 frames durante o movimento horizontal.
+    * `Jumping`: Frame único exibido durante o movimento ascendente (`change_y > 0`).
+    * `Falling`: Frame único exibido durante o movimento descendente (`change_y < 0`).
+
 ### 2.2 Inimigos Comuns (`Enemy`)
 * **Comportamento:** Persegue o jogador horizontalmente.
 * **IA de Patrulha:** Ao colidir com paredes ou espinhos, inverte a direção por 60 quadros (1 segundo) antes de voltar a perseguir.
